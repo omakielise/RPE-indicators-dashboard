@@ -1,0 +1,151 @@
+---
+title: "RPE Indicator Tracking System Dashboard, Demonstration"
+output: html_document
+runtime: shiny
+date: "2024-07-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, include=FALSE)
+
+# Load required packages
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(readxl)
+library(shiny)
+library(grid)
+library(gridExtra)
+
+# Set the path of your working directory
+setwd("My\\Path")
+## Note: use ‘\\’ or ‘/’ instead of ‘\’ when writing your directory path
+
+# Load data from xlsx
+df <- read_xlsx("Demonstration File.xlsx", sheet = "Demo")
+
+# Ensure "Count Estimate", "Lower CI", "Upper CI", "Year" numeric
+df <- df %>%
+  mutate(Count_Estimate = as.numeric(Count_Estimate),
+         Lower_CI = as.numeric(Lower_CI),
+         Upper_CI = as.numeric(Upper_CI),
+         Year = as.numeric(Year))
+
+# Convert 'Race' to a factor and set the levels
+race_order <- c("Black or African American", "Hispanic/Latino", "White", "Asian", "Multiracial Non-Hispanic", "All Other Races","Overall")
+df$Race <- factor(df$Race, levels = race_order)
+```
+
+```{r functions}
+# Barchart Functions
+
+# Sex bar chart
+barchart_sex <- function(df, ylab, fill_color) {
+  ggplot(df, aes(x = Sex, y = Percent_Estimate, fill = Sex)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2,
+                  position = position_dodge(0.9)) +
+    geom_text(aes(label = paste(Percent_Estimate, "%\n(", Lower_CI, "%, ", Upper_CI, "%)", sep = ""),
+                  y = Upper_CI + 2), size = 3) +
+    theme_minimal() +
+    labs(x = "Sex",
+         y = ylab) +
+    scale_fill_manual(values = fill_color) +
+    coord_cartesian(ylim = c(0, max(df$Upper_CI) + 5)) +
+    theme(legend.position = "none")
+}
+
+# Race bar chart
+barchart_race <- function(df, ylab, fill_color) {
+  ggplot(df, aes(x = Race, y = Percent_Estimate, fill = Race)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, position = position_dodge(0.9)) +
+    geom_text(aes(label = paste(Percent_Estimate, "%\n(", Lower_CI, "%, ", Upper_CI, "%)", sep = ""),
+                  y = Upper_CI + 2), size = 3) +
+    theme_minimal() +
+    labs(x = "Race",
+         y = ylab) +
+    scale_fill_manual(values = fill_color) +
+    coord_cartesian(ylim = c(0, max(df$Upper_CI) + 5)) +
+    theme(legend.position = "none",
+      axis.text.x = element_text(angle = 35, hjust = 1)
+    )
+}
+```
+
+```{r Physical Fight v3_sex}
+# Filter the data for "Overall" in all variables except "Indicator", "Sex", and "Year" columns
+# Filter the data for "v3" in "Indicator" column
+# Filter the data for "Male" and "Female" in "Sex" column
+v3_sex <- df %>%
+  filter(Race == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v3")%>%
+  filter(Sex %in% c("Male", "Female"))
+
+# Split data frame into  separate data frames based on year
+v3_sex_2019 <- v3_sex %>% filter(Year == 2019)
+v3_sex_2021 <- v3_sex %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v3_sex_2019 <- barchart_sex(v3_sex_2019, "% Physical Fight", c("Female" = "blue", "Male" = "blue"))
+
+bar_v3_sex_2021 <- barchart_sex(v3_sex_2021, "% Physical Fight", c("Female" = "blue", "Male" = "blue"))
+```
+
+```{r Physical Fight v3_race}
+# Filter the data for "Overall" in all variables except "Indicator", "Race", and "Year" columns
+# Filter the data for "v3" in "Indicator" column
+# Filter the data for "Black or African American", "Hispanic/Latino, "White", "Asian", "Multiracial Non-Hispanic", "All Other Races" in "Race" column
+v3_race <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v3") %>%
+  filter(Race %in% c("Black or African American", "Hispanic/Latino", "White", "Asian", "Multiracial Non-Hispanic", "All Other Races"))
+
+# Split data frame into  separate data frames based on year
+v3_race_2019 <- v3_race %>% filter(Year == 2019)
+v3_race_2021 <- v3_race %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v3_race_2019 <- barchart_race(v3_race_2019, "% Physical Fight", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+
+bar_v3_race_2021 <- barchart_race(v3_race_2021, "% Physical Fight", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+```
+
+# YRBS Shiny Dashboard, 2019-2021
+
+```{r Dashboard, include = TRUE}
+selectInput("indicator", "Select Indicator:", 
+            choices = c("Physical Fight" = "v3"))
+
+# Dropdown for selecting the year
+selectInput("year", "Select Year:", choices = c("2019", "2021"))
+
+# Display the plot based on the selected indicator and year
+renderPlot({
+  selected_year <- as.numeric(input$year)
+  selected_indicator <- input$indicator
+  
+ # Code for v3
+  if (selected_indicator == "v3") {
+    if (selected_year == 2019) {
+      grid.arrange(
+        bar_v3_sex_2019, bar_v3_race_2019,
+        nrow = 1,
+        ncol = 2
+      )
+    } else if (selected_year == 2021) {
+      grid.arrange(
+        bar_v3_sex_2021, bar_v3_race_2021,
+        nrow = 1,
+        ncol = 2
+      )
+    }
+  }
+}, height = 500, width = 1100)
+```

@@ -1,0 +1,783 @@
+---
+title: "RPE Indicator Tracking System Dashboard"
+output: html_document
+runtime: shiny
+date: "2024-07-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, include = FALSE)
+
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(readxl)
+library(shiny)
+library(grid)
+library(gridExtra)
+
+# Establish indicators data
+
+# v1: Sexual Dating Violence
+# v2: Forced Sexual Intercourse
+# v3: Physical Fight
+# v4: Dating Violence
+# v5: Comfortable Seeking Help
+# v6: Felt Unsafe
+
+# Set the path of your working directory
+setwd("My\\Path")
+## Note: use ‘\\’ or ‘/’ instead of ‘\’ when writing your directory path
+
+# Load data from xlsx
+df <- read_xlsx("Indicator Dashboard Data.xlsx", sheet = "Dashboard Data")
+
+# Convert "Count_Estimate", "Lower_CI", "Upper_CI", "Year" to number to ensure it's in the proper type
+df <- df %>%
+  mutate(Count_Estimate = as.numeric(Count_Estimate),
+         Lower_CI = as.numeric(Lower_CI),
+         Upper_CI = as.numeric(Upper_CI),
+         Year = as.numeric(Year))
+
+# Convert 'Race' to a factor and set the levels
+race_order <- c("Black or African American", "Hispanic/Latino", "White", "Asian",
+                  "Multiracial Non-Hispanic", "All Other Races","Overall")
+df$Race <- factor(df$Race, levels = race_order)
+
+# Convert 'Sexual Orientation' to a factor and set the levels
+orientation_order <- c("Heterosexual (Straight)", "Gay/Lesbian", "Bisexual",
+                       "Not Sure", "Other/Questioning", "Overall")
+df$Sexual_Orientation <- factor(df$Sexual_Orientation, levels = orientation_order)
+
+# Convert 'Region' to a factor and set the levels
+region_order <- c("Capital", "Central", "Southern", "Western",
+                  "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore", "Overall")
+df$Region <- factor(df$Region, levels = region_order)
+```
+
+```{r functions}
+# Sex bar chart
+barchart_sex <- function(df, ylab, fill_color) {
+  ggplot(df, aes(x = Sex, y = Percent_Estimate, fill = Sex)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2,
+                  position = position_dodge(0.9)) +
+    geom_text(aes(label = paste(Percent_Estimate, "%\n(", Lower_CI, "%, ", Upper_CI, "%)", sep = ""),
+                  y = Upper_CI + 2), size = 3) +
+    theme_minimal() +
+    labs(x = "Sex",
+         y = ylab) +
+    scale_fill_manual(values = fill_color) +
+    coord_cartesian(ylim = c(0, max(df$Upper_CI) + 5)) +
+    theme(legend.position = "none")
+}
+
+# Race bar chart
+barchart_race <- function(df, ylab, fill_color) {
+  ggplot(df, aes(x = Race, y = Percent_Estimate, fill = Race)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, position = position_dodge(0.9)) +
+    geom_text(aes(label = paste(Percent_Estimate, "%\n(", Lower_CI, "%, ", Upper_CI, "%)", sep = ""),
+                  y = Upper_CI + 2), size = 3) +
+    theme_minimal() +
+    labs(x = "Race",
+         y = ylab) +
+    scale_fill_manual(values = fill_color) +
+    coord_cartesian(ylim = c(0, max(df$Upper_CI) + 5)) +
+    theme(legend.position = "none",
+      axis.text.x = element_text(angle = 35, hjust = 1)
+    )
+}
+
+# Sexual orientation bar chart
+barchart_orientation <- function(df, ylab, fill_color) {
+  ggplot(df, aes(x = Sexual_Orientation, y = Percent_Estimate, fill = Sexual_Orientation)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, position = position_dodge(0.9)) +
+    geom_text(aes(label = paste(Percent_Estimate, "%\n(", Lower_CI, "%, ", Upper_CI, "%)", sep = ""),
+                  y = Upper_CI + 2), size = 3) +
+    theme_minimal() +
+    labs(x = "Sexual Orientation",
+         y = ylab) +
+    scale_fill_manual(values = fill_color) +
+    coord_cartesian(ylim = c(0, max(df$Upper_CI) + 5)) +
+    theme(legend.position = "none")
+}
+
+# Region bar chart
+barchart_region <- function(df, ylab, fill_color) {
+  ggplot(df, aes(x = Region, y = Percent_Estimate, fill = Region)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, position = position_dodge(0.9)) +
+    geom_text(aes(label = paste(Percent_Estimate, "%\n(", Lower_CI, "%, ", Upper_CI, "%)", sep = ""),
+                  y = Upper_CI + 2), size = 3) +
+    theme_minimal() +
+    labs(x = "Region",
+         y = ylab) +
+    scale_fill_manual(values = fill_color) +
+    coord_cartesian(ylim = c(0, max(df$Upper_CI) + 5)) +
+    theme(legend.position = "none")
+}
+```
+
+
+```{r Sexual Dating Violence v1_sex}
+# Filter the data for "Overall" in all variables except "Indicator", "Sex", and "Year" columns
+# Filter the data for "v1" in "Indicator" column
+# Filter the data for "Male" and "Female" in "Sex" column
+v1_sex <- df %>%
+  filter(Race == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v1") %>%
+  filter(Sex %in% c("Male", "Female"))
+
+# Split data frame into  separate data frames based on year
+v1_sex_2017 <- v1_sex %>% filter(Year == 2017)
+
+# Create a bar charts
+bar_v1_sex_2017 <- barchart_sex(v1_sex_2017, "% Sexual Dating Violence", c("Female" = "blue", "Male" = "blue"))
+```
+
+```{r Sexual Dating Violence v1_race}
+# Filter the data for "Overall" in all variables except "Indicator", "Race", and "Year" columns
+# Filter the data for "v1" in "Indicator" column
+# Filter the data for "Black or African American", "Hispanic/Latino, "White", "Asian", "Multiracial Non-Hispanic", "All Other Races" in "Race" column
+v1_race <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v1") %>%
+  filter(Race %in% c("Black or African American", "Hispanic/Latino", "White", "Asian", "Multiracial Non-Hispanic", "All Other Races"))
+
+# Split data frame into  separate data frames based on year
+v1_race_2017 <- v1_race %>% filter(Year == 2017)
+
+
+# Create a bar charts
+bar_v1_race_2017 <- barchart_race(v1_race_2017, "% Sexual Dating Violence", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+```
+
+```{r Sexual Dating Violence v1_orientation}
+# Filter the data for "Overall" in all variables except "Indicator", "Sexual Orientation", and "Year" columns
+# Filter the data for "v1" in "Indicator" column
+# Filter the data for "Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning" in "Sexual Orientation" column
+v1_orientation <- df %>%
+  filter(Sex == "Overall",
+         Race == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v1") %>%
+  filter(Sexual_Orientation %in% c("Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning"))
+
+# Split data frame into separate data frames based on year
+v1_orientation_2017 <- v1_orientation %>% filter(Year == 2017)
+
+# Create a bar charts
+bar_v1_orientation_2017 <- barchart_orientation(v1_orientation_2017, "% Sexual Dating Violence", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+```
+
+```{r Sexual Dating Violence v1_region}
+# Filter the data for "Overall" in all variables except "Indicator", "Region", and "Year" columns
+# Filter the data for "v1" in "Indicator" column
+# Filter the data for "Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore" in "Region" column
+v1_region <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Race == "Overall",
+         Indicator == "v1") %>%
+  filter(Region %in% c("Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore"))
+
+# Split data frame into  separate data frames based on year
+v1_region_2017 <- v1_region %>% filter(Year == 2017)
+
+# Create a bar charts
+bar_v1_region_2017 <- barchart_region(v1_region_2017, "% Sexual Dating Violence", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+```
+
+```{r Forced Sexual Intercourse v2_sex}
+# Filter the data for "Overall" in all variables except "Indicator", "Sex", and "Year" columns
+# Filter the data for "v2" in "Indicator" column
+# Filter the data for "Male" and "Female" in "Sex" column
+v2_sex <- df %>%
+  filter(Race == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v2") %>%
+  filter(Sex %in% c("Male", "Female"))
+
+# Split data frame into  separate data frames based on year
+v2_sex_2017 <- v2_sex %>% filter(Year == 2017)
+
+# Create a bar charts
+bar_v2_sex_2017 <- barchart_sex(v2_sex_2017, "% Forced Sexual Intercourse", c("Female" = "blue", "Male" = "blue"))
+```
+
+```{r Forced Sexual Intercourse v2_race}
+# Filter the data for "Overall" in all variables except "Indicator", "Race", and "Year" columns
+# Filter the data for "v2" in "Indicator" column
+# Filter the data for "Black or African American", "Hispanic/Latino, "White", "Asian", "Multiracial Non-Hispanic", "All Other Races" in "Race" column
+v2_race <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v2") %>%
+  filter(Race %in% c("Black or African American", "Hispanic/Latino", "White", "Asian", "Multiracial Non-Hispanic", "All Other Races"))
+
+# Split data frame into  separate data frames based on year
+v2_race_2017 <- v2_race %>% filter(Year == 2017)
+
+# Create a bar charts
+bar_v2_race_2017 <- barchart_race(v2_race_2017, "% Forced Sexual Intercourse", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+```
+
+```{r Forced Sexual Intercourse v2_orientation}
+# Filter the data for "Overall" in all variables except "Indicator", "Sexual Orientation", and "Year" columns
+# Filter the data for "v2" in "Indicator" column
+# Filter the data for "Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning" in "Sexual Orientation" column
+v2_orientation <- df %>%
+  filter(Sex == "Overall",
+         Race == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v2") %>%
+  filter(Sexual_Orientation %in% c("Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning"))
+
+# Split data frame into separate data frames based on year
+v2_orientation_2017 <- v2_orientation %>% filter(Year == 2017)
+
+# Create a bar charts
+bar_v2_orientation_2017 <- barchart_orientation(v2_orientation_2017, "% Forced Sexual Intercourse", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+```
+
+```{r Forced Sexual Intercourse v2_region}
+# Filter the data for "Overall" in all variables except "Indicator", "Region", and "Year" columns
+# Filter the data for "v2" in "Indicator" column
+# Filter the data for "Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore" in "Region" column
+v2_region <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Race == "Overall",
+         Indicator == "v2") %>%
+  filter(Region %in% c("Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore"))
+
+# Split data frame into  separate data frames based on year
+v2_region_2017 <- v2_region %>% filter(Year == 2017)
+
+# Create a bar charts
+bar_v2_region_2017 <- barchart_region(v2_region_2017, "% Forced Sexual Intercourse", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+```
+
+```{r Physical Fight v3_sex}
+# Filter the data for "Overall" in all variables except "Indicator", "Sex", and "Year" columns
+# Filter the data for "v3" in "Indicator" column
+# Filter the data for "Male" and "Female" in "Sex" column
+v3_sex <- df %>%
+  filter(Race == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v3") %>%
+  filter(Sex %in% c("Male", "Female"))
+
+# Split data frame into  separate data frames based on year
+v3_sex_2017 <- v3_sex %>% filter(Year == 2017)
+v3_sex_2019 <- v3_sex %>% filter(Year == 2019)
+v3_sex_2021 <- v3_sex %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v3_sex_2017 <- barchart_sex(v3_sex_2017, "% Physical Fight", c("Female" = "blue", "Male" = "blue"))
+bar_v3_sex_2019 <- barchart_sex(v3_sex_2019, "% Physical Fight", c("Female" = "blue", "Male" = "blue"))
+bar_v3_sex_2021 <- barchart_sex(v3_sex_2021, "% Physical Fight", c("Female" = "blue", "Male" = "blue"))
+```
+
+```{r Physical Fight v3_race}
+# Filter the data for "Overall" in all variables except "Indicator", "Race", and "Year" columns
+# Filter the data for "v3" in "Indicator" column
+# Filter the data for "Black or African American", "Hispanic/Latino, "White", "Asian", "Multiracial Non-Hispanic", "All Other Races" in "Race" column
+v3_race <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v3") %>%
+  filter(Race %in% c("Black or African American", "Hispanic/Latino", "White", "Asian", "Multiracial Non-Hispanic", "All Other Races"))
+
+# Split data frame into  separate data frames based on year
+v3_race_2017 <- v3_race %>% filter(Year == 2017)
+v3_race_2019 <- v3_race %>% filter(Year == 2019)
+v3_race_2021 <- v3_race %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v3_race_2017 <- barchart_race(v3_race_2017, "% Physical Fight", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+
+bar_v3_race_2019 <- barchart_race(v3_race_2019, "% Physical Fight", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+
+bar_v3_race_2021 <- barchart_race(v3_race_2021, "% Physical Fight", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+```
+
+```{r Physical Fight v3_orientation}
+# Filter the data for "Overall" in all variables except "Indicator", "Sexual Orientation", and "Year" columns
+# Filter the data for "v3" in "Indicator" column
+# Filter the data for "Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning" in "Sexual Orientation" column
+v3_orientation <- df %>%
+  filter(Sex == "Overall",
+         Race == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v3") %>%
+  filter(Sexual_Orientation %in% c("Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning"))
+
+# Split data frame into separate data frames based on year
+v3_orientation_2017 <- v3_orientation %>% filter(Year == 2017)
+v3_orientation_2019 <- v3_orientation %>% filter(Year == 2019)
+v3_orientation_2021 <- v3_orientation %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v3_orientation_2017 <- barchart_orientation(v3_orientation_2017, "% Physical Fight", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+
+bar_v3_orientation_2019 <- barchart_orientation(v3_orientation_2019, "% Physical Fight", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+
+bar_v3_orientation_2021 <- barchart_orientation(v3_orientation_2021, "% Physical Fight", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+```
+
+```{r Physical Fight v3_region}
+# Filter the data for "Overall" in all variables except "Indicator", "Region", and "Year" columns
+# Filter the data for "v3" in "Indicator" column
+# Filter the data for "Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore" in "Region" column
+v3_region <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Race == "Overall",
+         Indicator == "v3") %>%
+  filter(Region %in% c("Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore"))
+
+# Split data frame into  separate data frames based on year
+v3_region_2017 <- v3_region %>% filter(Year == 2017)
+v3_region_2019 <- v3_region %>% filter(Year == 2019)
+v3_region_2021 <- v3_region %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v3_region_2017 <- barchart_region(v3_region_2017, "% Physical Fight", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+
+bar_v3_region_2019 <- barchart_region(v3_region_2019, "% Physical Fight", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+
+bar_v3_region_2021 <- barchart_region(v3_region_2021, "% Physical Fight", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+```
+
+```{r Dating Violence v4_sex}
+# Filter the data for "Overall" in all variables except "Indicator", "Sex", and "Year" columns
+# Filter the data for "v4" in "Indicator" column
+# Filter the data for "Male" and "Female" in "Sex" column
+v4_sex <- df %>%
+  filter(Race == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v4") %>%
+  filter(Sex %in% c("Male", "Female"))
+
+# Split data frame into  separate data frames based on year
+v4_sex_2017 <- v4_sex %>% filter(Year == 2017)
+v4_sex_2019 <- v4_sex %>% filter(Year == 2019)
+v4_sex_2021 <- v4_sex %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v4_sex_2017 <- barchart_sex(v4_sex_2017, "% Dating Violence", c("Female" = "blue", "Male" = "blue"))
+bar_v4_sex_2019 <- barchart_sex(v4_sex_2019, "% Dating Violence", c("Female" = "blue", "Male" = "blue"))
+bar_v4_sex_2021 <- barchart_sex(v4_sex_2021, "% Dating Violence", c("Female" = "blue", "Male" = "blue"))
+```
+
+```{r Dating Violence v4_race}
+# Filter the data for "Overall" in all variables except "Indicator", "Race", and "Year" columns
+# Filter the data for "v4" in "Indicator" column
+# Filter the data for "Black or African American", "Hispanic/Latino, "White", "Asian", "Multiracial Non-Hispanic", "All Other Races" in "Race" column
+v4_race <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v4") %>%
+  filter(Race %in% c("Black or African American", "Hispanic/Latino", "White", "Asian", "Multiracial Non-Hispanic", "All Other Races"))
+
+# Split data frame into  separate data frames based on year
+v4_race_2017 <- v4_race %>% filter(Year == 2017)
+v4_race_2019 <- v4_race %>% filter(Year == 2019)
+v4_race_2021 <- v4_race %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v4_race_2017 <- barchart_race(v4_race_2017, "% Dating Violence", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+
+bar_v4_race_2019 <- barchart_race(v4_race_2019, "% Dating Violence", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+
+bar_v4_race_2021 <- barchart_race(v4_race_2021, "% Dating Violence", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+```
+
+```{r Dating Violence v4_orientation}
+# Filter the data for "Overall" in all variables except "Indicator", "Sexual Orientation", and "Year" columns
+# Filter the data for "v4" in "Indicator" column
+# Filter the data for "Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning" in "Sexual Orientation" column
+v4_orientation <- df %>%
+  filter(Sex == "Overall",
+         Race == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v4") %>%
+  filter(Sexual_Orientation %in% c("Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning"))
+
+# Split data frame into separate data frames based on year
+v4_orientation_2017 <- v4_orientation %>% filter(Year == 2017)
+v4_orientation_2019 <- v4_orientation %>% filter(Year == 2019)
+v4_orientation_2021 <- v4_orientation %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v4_orientation_2017 <- barchart_orientation(v4_orientation_2017, "% Dating Violence", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+
+bar_v4_orientation_2019 <- barchart_orientation(v4_orientation_2019, "% Dating Violence", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+
+bar_v4_orientation_2021 <- barchart_orientation(v4_orientation_2021, "% Dating Violence", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+```
+
+```{r Dating Violence v4_region}
+# Filter the data for "Overall" in all variables except "Indicator", "Region", and "Year" columns
+# Filter the data for "v4" in "Indicator" column
+# Filter the data for "Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore" in "Region" column
+v4_region <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Race == "Overall",
+         Indicator == "v4") %>%
+  filter(Region %in% c("Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore"))
+
+# Split data frame into  separate data frames based on year
+v4_region_2017 <- v4_region %>% filter(Year == 2017)
+v4_region_2019 <- v4_region %>% filter(Year == 2019)
+v4_region_2021 <- v4_region %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v4_region_2017 <- barchart_region(v4_region_2017, "% Dating Violence", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+
+bar_v4_region_2019 <- barchart_region(v4_region_2019, "% Dating Violence", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+
+bar_v4_region_2021 <- barchart_region(v4_region_2021, "% Dating Violence", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+```
+
+```{r Comfortable Seeking Help v5_sex}
+# Filter the data for "Overall" in all variables except "Indicator", "Sex", and "Year" columns
+# Filter the data for "v5" in "Indicator" column
+# Filter the data for "Male" and "Female" in "Sex" column
+v5_sex <- df %>%
+  filter(Race == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v5") %>%
+  filter(Sex %in% c("Male", "Female"))
+
+# Split data frame into  separate data frames based on year
+v5_sex_2017 <- v5_sex %>% filter(Year == 2017)
+v5_sex_2019 <- v5_sex %>% filter(Year == 2019)
+v5_sex_2021 <- v5_sex %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v5_sex_2017 <- barchart_sex(v5_sex_2017, "% Comfortable Seeking Help", c("Female" = "blue", "Male" = "blue"))
+bar_v5_sex_2019 <- barchart_sex(v5_sex_2019, "% Comfortable Seeking Help", c("Female" = "blue", "Male" = "blue"))
+bar_v5_sex_2021 <- barchart_sex(v5_sex_2021, "% Comfortable Seeking Help", c("Female" = "blue", "Male" = "blue"))
+```
+
+```{r Comfortable Seeking Help v5_race}
+# Filter the data for "Overall" in all variables except "Indicator", "Race", and "Year" columns
+# Filter the data for "v5" in "Indicator" column
+# Filter the data for "Black or African American", "Hispanic/Latino, "White", "Asian", "Multiracial Non-Hispanic", "All Other Races" in "Race" column
+v5_race <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v5") %>%
+  filter(Race %in% c("Black or African American", "Hispanic/Latino", "White", "Asian", "Multiracial Non-Hispanic", "All Other Races"))
+
+
+# Split data frame into  separate data frames based on year
+v5_race_2017 <- v5_race %>% filter(Year == 2017)
+v5_race_2019 <- v5_race %>% filter(Year == 2019)
+v5_race_2021 <- v5_race %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v5_race_2017 <- barchart_race(v5_race_2017, "% Comfortable Seeking Help", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+
+bar_v5_race_2019 <- barchart_race(v5_race_2019, "% Comfortable Seeking Help", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+
+bar_v5_race_2021 <- barchart_race(v5_race_2021, "% Comfortable Seeking Help", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+```
+
+```{r Comfortable Seeking Help v5_orientation}
+# Filter the data for "Overall" in all variables except "Indicator", "Sexual Orientation", and "Year" columns
+# Filter the data for "v5" in "Indicator" column
+# Filter the data for "Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning" in "Sexual Orientation" column
+v5_orientation <- df %>%
+  filter(Sex == "Overall",
+         Race == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v5") %>%
+  filter(Sexual_Orientation %in% c("Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning"))
+
+# Split data frame into separate data frames based on year
+v5_orientation_2017 <- v5_orientation %>% filter(Year == 2017)
+v5_orientation_2019 <- v5_orientation %>% filter(Year == 2019)
+v5_orientation_2021 <- v5_orientation %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v5_orientation_2017 <- barchart_orientation(v5_orientation_2017, "% Comfortable Seeking Help", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+
+bar_v5_orientation_2019 <- barchart_orientation(v5_orientation_2019, "% Comfortable Seeking Help", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+
+bar_v5_orientation_2021 <- barchart_orientation(v5_orientation_2021, "% Comfortable Seeking Help", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+```
+
+```{r Comfortable Seeking Help v5_region}
+# Filter the data for "Overall" in all variables except "Indicator", "Region", and "Year" columns
+# Filter the data for "v5" in "Indicator" column
+# Filter the data for "Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore" in "Region" column
+v5_region <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Race == "Overall",
+         Indicator == "v5") %>%
+  filter(Region %in% c("Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore"))
+
+# Split data frame into  separate data frames based on year
+v5_region_2017 <- v5_region %>% filter(Year == 2017)
+v5_region_2019 <- v5_region %>% filter(Year == 2019)
+v5_region_2021 <- v5_region %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v5_region_2017 <- barchart_region(v5_region_2017, "% Comfortable Seeking Help", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+
+bar_v5_region_2019 <- barchart_region(v5_region_2019, "% Comfortable Seeking Help", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+
+bar_v5_region_2021 <- barchart_region(v5_region_2021, "% Comfortable Seeking Help", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+```
+
+```{r Felt Unsafe v6_sex}
+# Filter the data for "Overall" in all variables except "Indicator", "Sex", and "Year" columns
+# Filter the data for "v6" in "Indicator" column
+# Filter the data for "Male" and "Female" in "Sex" column
+v6_sex <- df %>%
+  filter(Race == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v6") %>%
+  filter(Sex %in% c("Male", "Female"))
+
+# Split data frame into  separate data frames based on year
+v6_sex_2019 <- v6_sex %>% filter(Year == 2019)
+v6_sex_2021 <- v6_sex %>% filter(Year == 2021)
+
+
+# Create a bar charts
+bar_v6_sex_2019 <- barchart_sex(v6_sex_2019, "% Felt Unsafe", c("Female" = "blue", "Male" = "blue"))
+bar_v6_sex_2021 <- barchart_sex(v6_sex_2021, "% Felt Unsafe", c("Female" = "blue", "Male" = "blue"))
+```
+
+```{r Felt Unsafe v6_race}
+# Filter the data for "Overall" in all variables except "Indicator", "Race", and "Year" columns
+# Filter the data for "v6" in "Indicator" column
+# Filter the data for "Black or African American", "Hispanic/Latino, "White", "Asian", "Multiracial Non-Hispanic", "All Other Races" in "Race" column
+v6_race <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v6") %>%
+  filter(Race %in% c("Black or African American", "Hispanic/Latino", "White", "Asian", "Multiracial Non-Hispanic", "All Other Races"))
+
+# Split data frame into  separate data frames based on year
+v6_race_2019 <- v6_race %>% filter(Year == 2019)
+v6_race_2021 <- v6_race %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v6_race_2019 <- barchart_race(v6_race_2019, "% Felt Unsafe", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+
+bar_v6_race_2021 <- barchart_race(v6_race_2021, "% Felt Unsafe", c("Black or African American" = "blue", "Hispanic/Latino" = "blue", "White" = "blue", "Asian" = "blue", "Multiracial Non-Hispanic" = "blue", "All Other Races" = "blue"))
+```
+
+```{r Felt Unsafe v6_orientation}
+# Filter the data for "Overall" in all variables except "Indicator", "Sexual Orientation", and "Year" columns
+# Filter the data for "v6" in "Indicator" column
+# Filter the data for "Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning" in "Sexual Orientation" column
+v6_orientation <- df %>%
+  filter(Sex == "Overall",
+         Race == "Overall",
+         Transgender == "Overall",
+         Region == "Overall",
+         Indicator == "v6") %>%
+  filter(Sexual_Orientation %in% c("Heterosexual (Straight)", "Gay/Lesbian", "Bisexual", "Not Sure", "Other/Questioning"))
+
+# Split data frame into separate data frames based on year
+v6_orientation_2019 <- v6_orientation %>% filter(Year == 2019)
+v6_orientation_2021 <- v6_orientation %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v6_orientation_2019 <- barchart_orientation(v6_orientation_2019, "% Felt Unsafe", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+
+bar_v6_orientation_2021 <- barchart_orientation(v6_orientation_2021, "% Felt Unsafe", c("Heterosexual (Straight)" = "blue", "Gay/Lesbian" = "blue", "Bisexual" = "blue", "Not Sure" = "blue", "Other/Questioning" = "blue"))
+```
+
+```{r Felt Unsafe v6_region}
+# Filter the data for "Overall" in all variables except "Indicator", "Region", and "Year" columns
+# Filter the data for "v6" in "Indicator" column
+# Filter the data for "Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore" in "Region" column
+v6_region <- df %>%
+  filter(Sex == "Overall",
+         Sexual_Orientation == "Overall",
+         Transgender == "Overall",
+         Race == "Overall",
+         Indicator == "v6") %>%
+  filter(Region %in% c("Capital", "Central", "Southern", "Western", "Lower_CI Shore", "Upper_CI Shore", "Eastern Shore"))
+
+# Split data frame into  separate data frames based on year
+v6_region_2019 <- v6_region %>% filter(Year == 2019)
+v6_region_2021 <- v6_region %>% filter(Year == 2021)
+
+# Create a bar charts
+bar_v6_region_2019 <- barchart_region(v6_region_2019, "% Felt Unsafe", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+
+bar_v6_region_2021 <- barchart_region(v6_region_2021, "% Felt Unsafe", c("Capital" = "blue", "Central" = "blue", "Southern" = "blue", "Western" = "blue", "Lower_CI Shore" = "blue", "Upper_CI Shore" = "blue", "Eastern Shore" = "blue"))
+```
+
+# YRBS Shiny Dashboard, 2017-2021
+
+```{r Dashboard, include = TRUE}
+# Dropdown for selecting the indicator
+selectInput("indicator", "Select Indicator:", 
+            choices = c("Sexual Dating Violence" = "v1",
+                        "Forced Sexual Intercourse" = "v2",
+                        "Physical Fight" = "v3",
+                        "Dating Violence" = "v4",
+                        "Comfortable Seeking Help" = "v5",
+                        "Felt Unsafe" = "v6"))
+
+# Dropdown for selecting the year
+selectInput("year", "Select Year:", choices = c("2017", "2019", "2021"))
+
+# Display the plot based on the selected indicator and year
+renderPlot({
+  selected_year <- as.numeric(input$year)
+  selected_indicator <- input$indicator
+  
+  # Code for v1
+  if (selected_indicator == "v1" && selected_year == 2017) {
+    grid.arrange(
+      bar_v1_sex_2017, bar_v1_orientation_2017,
+      bar_v1_race_2017, bar_v1_region_2017,
+      nrow = 2,
+      ncol = 2
+    )
+  }
+  
+  # Code for v2
+  if (selected_indicator == "v2" && selected_year == 2017) {
+    grid.arrange(
+      bar_v2_sex_2017, bar_v2_orientation_2017,
+      bar_v2_race_2017, bar_v2_region_2017,
+      nrow = 2,
+      ncol = 2
+    )
+  }
+  
+  # Code for v3
+  if (selected_indicator == "v3") {
+    if (selected_year == 2017) {
+      grid.arrange(
+        bar_v3_sex_2017, bar_v3_orientation_2017,
+        bar_v3_race_2017, bar_v3_region_2017,
+        nrow = 2,
+        ncol = 2
+      )
+    } else if (selected_year == 2019) {
+      grid.arrange(
+        bar_v3_sex_2019, bar_v3_orientation_2019,
+        bar_v3_race_2019, bar_v3_region_2019,
+        nrow = 2,
+        ncol = 2
+      )
+    } else if (selected_year == 2021) {
+      grid.arrange(
+        bar_v3_sex_2021, bar_v3_orientation_2021,
+        bar_v3_race_2021, bar_v3_region_2021,
+        nrow = 2,
+        ncol = 2
+      )
+    }
+  }
+  
+  # Code for v4
+  if (selected_indicator == "v4") {
+    if (selected_year == 2017) {
+      grid.arrange(
+        bar_v4_sex_2017, bar_v4_orientation_2017,
+        bar_v4_race_2017, bar_v4_region_2017,
+        nrow = 2,
+        ncol = 2
+      )
+    } else if (selected_year == 2019) {
+      grid.arrange(
+        bar_v4_sex_2019, bar_v4_orientation_2019,
+        bar_v4_race_2019, bar_v4_region_2019,
+        nrow = 2,
+        ncol = 2
+      )
+    } else if (selected_year == 2021) {
+      grid.arrange(
+        bar_v4_sex_2021, bar_v4_orientation_2021,
+        bar_v4_race_2021, bar_v4_region_2021,
+        nrow = 2,
+        ncol = 2
+      )
+    }
+  }
+  
+  # Code for v5
+  if (selected_indicator == "v5") {
+    if (selected_year == 2017) {
+      grid.arrange(
+        bar_v5_sex_2017, bar_v5_orientation_2017,
+        bar_v5_race_2017, bar_v5_region_2017,
+        nrow = 2,
+        ncol = 2
+      )
+    } else if (selected_year == 2019) {
+      grid.arrange(
+        bar_v5_sex_2019, bar_v5_orientation_2019,
+        bar_v5_race_2019, bar_v5_region_2019,
+        nrow = 2,
+        ncol = 2
+      )
+    }
+  }
+  
+  # Code for v6
+  if (selected_indicator == "v6") {
+    if (selected_year == 2019) {
+      grid.arrange(
+        bar_v6_sex_2019, bar_v6_orientation_2019,
+        bar_v6_race_2019, bar_v6_region_2019,
+        nrow = 2,
+        ncol = 2
+      )
+    }
+  }
+}, height = 500, width = 1100)
+```
